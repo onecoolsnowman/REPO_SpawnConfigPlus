@@ -1,4 +1,6 @@
+using System.Collections.Generic;
 using HarmonyLib;
+using Unity.VisualScripting;
 using UnityEngine;
 
 namespace SpawnConfig.Patches;
@@ -11,26 +13,26 @@ public class LevelGeneratorPatch {
     [HarmonyPrefix]
     public static void LogAndModifySpawns(EnemySetup enemySetup, Vector3 position, LevelGenerator __instance){
 
-        // Multiply spawnObjects
-        int spawnGroupSize = enemySetup.spawnObjects.Count;
-        int index = 0;
-        if(enemySetup.spawnObjects[0].name.Contains("Director")){
-            // Gnome and Bang edge case since their first object is not an actual enemy
-            index = 1;
-            spawnGroupSize--;
+        // Logging
+        Dictionary<string, int> spawnObjects = new();
+        foreach (GameObject spawnObject in enemySetup.spawnObjects){
+            if(spawnObjects.ContainsKey(spawnObject.name)){
+                spawnObjects[spawnObject.name] = spawnObjects[spawnObject.name] + 1;
+            }else{
+                spawnObjects.Add(spawnObject.name, 1);
+            }
         }
-        int objectsToAdd = (SpawnConfig.configManager.enemyCountMultiplier.Value - 1) * spawnGroupSize;
-        if(spawnGroupSize > 10){objectsToAdd = 0;}
-        SpawnConfig.Logger.LogInfo("Adding " + objectsToAdd + " extra enemies to group");
-        for(int i = 0; i < objectsToAdd; i++){
-            enemySetup.spawnObjects.Add(enemySetup.spawnObjects[index]);
+        string logString = "";
+        foreach (KeyValuePair<string, int> obj in spawnObjects){
+            if(logString != "") logString += ", ";
+            logString += obj.Key + " x " + obj.Value;
         }
 
-        SpawnConfig.Logger.LogInfo("Attempting to spawn: " + enemySetup.name + " x " + enemySetup.spawnObjects.Count);
+        SpawnConfig.Logger.LogInfo("Attempting to spawn: [" + enemySetup.name + "]   (" + logString.Replace("Enemy - ", "") + ")");
         if(SpawnConfig.configManager.preventSpawns.Value){
-            // Had to do it this way because there seem to always be two fallback enemies getting added to EnemyDirector.enemyList and idk what causes it
-            SpawnConfig.Logger.LogInfo("Forcibly preventing all spawns");
+            // "Safe" way of doing it without having to skip the original PickEnemies logic
             enemySetup.spawnObjects.Clear();
+            SpawnConfig.Logger.LogInfo("Forcibly prevented all spawns!");
             return;
         }
     }

@@ -1,12 +1,15 @@
+using Newtonsoft.Json;
 using UnityEngine;
 
 namespace SpawnConfig.ExtendedClasses;
 
-public class SpawnObjectExtender {
+public class ExtendedSpawnObject (GameObject spawnObject) {
     
-    public GameObject spawnObject = null!;
+    public string name = spawnObject.name;
     public bool disabled = false;
     public int biggerGroupChance = 0;
     public int groupIncreaseAmount = 0;
+    [JsonIgnore]
+    public bool alteredGroupSize = false;
 
 }

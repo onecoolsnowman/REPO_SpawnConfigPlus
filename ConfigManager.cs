@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using BepInEx.Configuration;
 
 namespace SpawnConfig;
@@ -8,6 +9,7 @@ public class ConfigManager {
     internal ConfigEntry<bool> reduceRepeats = null!;
     internal ConfigEntry<int> enemyGroupMultiplier = null!;
     internal ConfigEntry<int> enemyCountMultiplier = null!;
+    internal Dictionary<string, ConfigEntry<int>> extendedEnemySetupSettings = [];
     internal void Setup(ConfigFile configFile) {
         preventSpawns = configFile.Bind("General", "Prevent enemy spawning", false, new ConfigDescription("Prevent enemy spawning entirely, turning the game into a no-stakes gathering simulator"));
 

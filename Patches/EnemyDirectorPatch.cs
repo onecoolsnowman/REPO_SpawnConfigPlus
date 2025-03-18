@@ -1,5 +1,4 @@
 using System.Collections.Generic;
-using System.Linq;
 using HarmonyLib;
 using SpawnConfig.ExtendedClasses;
 using UnityEngine;
@@ -11,8 +10,10 @@ namespace SpawnConfig.Patches;
 public class EnemyDirectorPatch {
 
     public static bool setupDone = false;
-    public static Dictionary<string, EnemySetupExtender> enemySetups = new Dictionary<string, EnemySetupExtender>();
-    public static Dictionary<string, GameObject> enemySpawnObjects = new Dictionary<string, GameObject>();
+    public static Dictionary<string, EnemySetup> enemySetups = [];
+    public static Dictionary<string, GameObject> spawnObjects = [];
+    public static Dictionary<string, ExtendedEnemySetup> extendedSetups = [];
+    public static Dictionary<string, ExtendedSpawnObject> extendedSpawnObjects = [];
 
     [HarmonyPatch("Awake")]
     [HarmonyPostfix]
@@ -22,41 +23,31 @@ public class EnemyDirectorPatch {
         if (!setupDone) {
             List<EnemySetup>[] enemiesDifficulties = [__instance.enemiesDifficulty3, __instance.enemiesDifficulty2, __instance.enemiesDifficulty1];
 
-            // Go through existing enemy setups and construct extended setups + generate config
+            // Go through existing EnemySetups & the contained spawnObjects and construct extended objects with default values
             int x = 3;
             foreach (List<EnemySetup> enemiesDifficulty in enemiesDifficulties){
                 SpawnConfig.Logger.LogInfo("Checking difficulty " + x);
 
                 foreach (EnemySetup enemySetup in enemiesDifficulty){
                     
-                    EnemySetupExtender extendedSetup = new();
-                    extendedSetup.difficulty = x;
-                    if(enemySetup.name.Contains("Gnome") || enemySetup.name.Contains("Bang")) extendedSetup.hasDirector = true;
-                    
-                    // Multiply spawnObjects with enemyCountMultiplier
-                    int spawnGroupSize = enemySetup.spawnObjects.Count;
-                    int copyIndex = 0;
-                    if(extendedSetup.hasDirector){
-                        // Gnome and Bang edge case since they have a special object that shouldn't be duplicated
-                        copyIndex = 1;
-                        spawnGroupSize--;
-                    }
-                    int objectsToAdd = (SpawnConfig.configManager.enemyCountMultiplier.Value - 1) * spawnGroupSize;
-                    SpawnConfig.Logger.LogInfo("Adding " + objectsToAdd + " extra enemies to group " + enemySetup.name);
-                    for(int i = 0; i < objectsToAdd; i++){
-                        enemySetup.spawnObjects.Add(enemySetup.spawnObjects[copyIndex]);
-                    }
+                    // Extend object
+                    enemySetup.name = enemySetup.name.Replace("Enemy - ", "").Replace("Enemy Group - ", "");
+                    enemySetups.Add(enemySetup.name, enemySetup);
+                    ExtendedEnemySetup extendedSetup = new(enemySetup, x);
 
                     // Save extended enemy setups to our own dict for later reusal
-                    extendedSetup.enemySetup = enemySetup;
-                    if(!enemySetups.ContainsKey(enemySetup.name)){
-                        enemySetups.Add(enemySetup.name, extendedSetup);
+                    if(!extendedSetups.ContainsKey(enemySetup.name)){
+                        extendedSetups.Add(extendedSetup.name, extendedSetup);
+                    }else{
+                        SpawnConfig.Logger.LogWarning("Duplicate EnemySetup name!");
                     }
                     
                     // Save enemy spawnObjects to our own dict for adding custom setups later
                     foreach (GameObject spawnObject in enemySetup.spawnObjects){
-                        if(!enemySpawnObjects.ContainsKey(spawnObject.name)){
-                            enemySpawnObjects.Add(spawnObject.name, spawnObject);
+                        ExtendedSpawnObject extendedObj = new(spawnObject);
+                        if (!extendedSpawnObjects.ContainsKey(extendedObj.name)){
+                            extendedSpawnObjects.Add(extendedObj.name, extendedObj);
+                            spawnObjects.Add(spawnObject.name, spawnObject);
                         }
                     }
                 }
@@ -65,9 +56,32 @@ public class EnemyDirectorPatch {
             
             // Log Dictionary contents
             SpawnConfig.Logger.LogInfo("Found the following enemy spawnObjects:");
-            foreach (KeyValuePair<string, GameObject> entry in enemySpawnObjects){
+            foreach (KeyValuePair<string, ExtendedSpawnObject> entry in extendedSpawnObjects){
                 SpawnConfig.Logger.LogInfo(entry.Key);
             }
+
+            // Update JSON file default values
+            SpawnConfig.ReadAndUpdateJSON();
+
+            // Load JSON file non-default values
+
+
+            // Perform temporary modifications on the ExtendedEnemySetups
+            /*
+            // Multiply spawnObjects with enemyCountMultiplier
+            int spawnGroupSize = enemySetup.spawnObjects.Count;
+            int copyIndex = 0;
+            if(extendedSetup.hasDirector){
+                // Gnome and Bang edge case since they have a special object that shouldn't be duplicated
+                copyIndex = 1;
+                spawnGroupSize--;
+            }
+            int objectsToAdd = (SpawnConfig.configManager.enemyCountMultiplier.Value - 1) * spawnGroupSize;
+            SpawnConfig.Logger.LogInfo("Adding " + objectsToAdd + " extra enemies to group " + enemySetup.name);
+            for(int i = 0; i < objectsToAdd; i++){
+                enemySetup.spawnObjects.Add(enemySetup.spawnObjects[copyIndex]);
+            }
+            */
 
             setupDone = true;
         }

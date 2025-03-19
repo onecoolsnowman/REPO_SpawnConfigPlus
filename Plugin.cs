@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using BepInEx;
@@ -8,7 +7,7 @@ using BepInEx.Logging;
 using HarmonyLib;
 using Newtonsoft.Json;
 using SpawnConfig.ExtendedClasses;
-using SpawnConfig.Patches;
+using static SpawnConfig.ListManager;
 
 namespace SpawnConfig;
 
@@ -82,7 +81,7 @@ public class SpawnConfig : BaseUnityPlugin
         ExtendedEnemySetup[] customSetupsList = GetObjArrayFromJSON(enemySetupsCfg);
 
         // Save default ExtendedEnemySetups to file for comparison purposes on next launch
-        ExtendedEnemySetup[] extendedSetupsList = EnemyDirectorPatch.extendedSetups.Select(obj => obj.Value).ToArray();
+        ExtendedEnemySetup[] extendedSetupsList = extendedSetups.Select(obj => obj.Value).ToArray();
         File.WriteAllText(defaultEnemySetupsCfg, JsonConvert.SerializeObject(extendedSetupsList, Formatting.Indented));
         if (customSetupsList.Length < 1) {
             Logger.LogInfo("No custom config found! Creating default file and stopping early");
@@ -99,9 +98,9 @@ public class SpawnConfig : BaseUnityPlugin
 
         // Update custom setups with new the default values from the source code if necessary
         foreach(ExtendedEnemySetup obj in customSetupsList){
-            if (!EnemyDirectorPatch.extendedSetups.ContainsKey(obj.name)) {
+            if (!extendedSetups.ContainsKey(obj.name)) {
                 // Add custom setups to the default value arrays to avoid errors
-                EnemyDirectorPatch.extendedSetups.Add(obj.name, obj);
+                extendedSetups.Add(obj.name, obj);
                 defaultSetupsList.AddItem(obj);
             }
             obj.UpdateWithDefaults(defaultSetupsList[Array.FindIndex(defaultSetupsList, objTemp => objTemp.name == obj.name)]);
@@ -111,7 +110,7 @@ public class SpawnConfig : BaseUnityPlugin
         File.WriteAllText(enemySetupsCfg, JsonConvert.SerializeObject(customSetupsList, Formatting.Indented));
 
         // Replace vanilla extended setups with the custom ones so that the custom changes take effect ingame
-        EnemyDirectorPatch.extendedSetups = customSetupsList.ToDictionary(obj => obj.name);
+        extendedSetups = customSetupsList.ToDictionary(obj => obj.name);
         
     }
 }

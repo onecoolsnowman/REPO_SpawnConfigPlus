@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using HarmonyLib;
 using SpawnConfig.ExtendedClasses;
+using static SpawnConfig.ListManager;
 using UnityEngine;
 
 namespace SpawnConfig.Patches;
@@ -10,10 +11,7 @@ namespace SpawnConfig.Patches;
 public class EnemyDirectorPatch {
 
     public static bool setupDone = false;
-    public static Dictionary<string, EnemySetup> enemySetups = [];
-    public static Dictionary<string, GameObject> spawnObjects = [];
-    public static Dictionary<string, ExtendedEnemySetup> extendedSetups = [];
-    public static Dictionary<string, ExtendedSpawnObject> extendedSpawnObjects = [];
+    public static int currentDifficultyPick = 3;
 
     [HarmonyPatch("Awake")]
     [HarmonyPostfix]
@@ -29,10 +27,19 @@ public class EnemyDirectorPatch {
                 SpawnConfig.Logger.LogInfo("Checking difficulty " + x);
 
                 foreach (EnemySetup enemySetup in enemiesDifficulty){
+
+                    // Save enemy spawnObjects to our own dict for adding custom setups later
+                    foreach (GameObject spawnObject in enemySetup.spawnObjects){
+                        ExtendedSpawnObject extendedObj = new(spawnObject);
+                        if (!extendedSpawnObjects.ContainsKey(extendedObj.name)){
+                            spawnObjectsDict.Add(spawnObject.name, spawnObject);
+                            extendedSpawnObjects.Add(extendedObj.name, extendedObj);
+                        }
+                    }
                     
                     // Extend object
-                    enemySetup.name = enemySetup.name.Replace("Enemy - ", "").Replace("Enemy Group - ", "");
-                    enemySetups.Add(enemySetup.name, enemySetup);
+                    enemySetup.name = enemySetup.name;
+                    enemySetupsDict.Add(enemySetup.name, enemySetup);
                     ExtendedEnemySetup extendedSetup = new(enemySetup, x);
 
                     // Save extended enemy setups to our own dict for later reusal
@@ -40,15 +47,6 @@ public class EnemyDirectorPatch {
                         extendedSetups.Add(extendedSetup.name, extendedSetup);
                     }else{
                         SpawnConfig.Logger.LogWarning("Duplicate EnemySetup name!");
-                    }
-                    
-                    // Save enemy spawnObjects to our own dict for adding custom setups later
-                    foreach (GameObject spawnObject in enemySetup.spawnObjects){
-                        ExtendedSpawnObject extendedObj = new(spawnObject);
-                        if (!extendedSpawnObjects.ContainsKey(extendedObj.name)){
-                            extendedSpawnObjects.Add(extendedObj.name, extendedObj);
-                            spawnObjects.Add(spawnObject.name, spawnObject);
-                        }
                     }
                 }
                 x--;
@@ -60,75 +58,73 @@ public class EnemyDirectorPatch {
                 SpawnConfig.Logger.LogInfo(entry.Key);
             }
 
-            // Update JSON file default values
+            // Read / update JSON configs
             SpawnConfig.ReadAndUpdateJSON();
-
-            // Load JSON file non-default values
-
-
-            // Perform temporary modifications on the ExtendedEnemySetups
-            /*
-            // Multiply spawnObjects with enemyCountMultiplier
-            int spawnGroupSize = enemySetup.spawnObjects.Count;
-            int copyIndex = 0;
-            if(extendedSetup.hasDirector){
-                // Gnome and Bang edge case since they have a special object that shouldn't be duplicated
-                copyIndex = 1;
-                spawnGroupSize--;
-            }
-            int objectsToAdd = (SpawnConfig.configManager.enemyCountMultiplier.Value - 1) * spawnGroupSize;
-            SpawnConfig.Logger.LogInfo("Adding " + objectsToAdd + " extra enemies to group " + enemySetup.name);
-            for(int i = 0; i < objectsToAdd; i++){
-                enemySetup.spawnObjects.Add(enemySetup.spawnObjects[copyIndex]);
-            }
-            */
-
             setupDone = true;
+
+            // Update enemiesDifficulty lists with altered setups
+            __instance.enemiesDifficulty1.Clear();
+            __instance.enemiesDifficulty2.Clear();
+            __instance.enemiesDifficulty3.Clear();
+            foreach (KeyValuePair<string, ExtendedEnemySetup> ext in extendedSetups) {
+                if(ext.Value.difficulty1Weight > 0) __instance.enemiesDifficulty1.Add(ext.Value.GetEnemySetup(spawnObjectsDict));
+                if(ext.Value.difficulty2Weight > 0) __instance.enemiesDifficulty2.Add(ext.Value.GetEnemySetup(spawnObjectsDict));
+                if(ext.Value.difficulty3Weight > 0) __instance.enemiesDifficulty3.Add(ext.Value.GetEnemySetup(spawnObjectsDict));
+            }
+
         }
     }
 
-    [HarmonyPatch("AmountSetup")]
-	[HarmonyPrefix]
-    public static bool AmountSetupOverride(EnemyDirector __instance){
-        
-        int amountCurve3Value = (int)__instance.amountCurve3.Evaluate(SemiFunc.RunGetDifficultyMultiplier());
-		int amountCurve2Value = (int)__instance.amountCurve2.Evaluate(SemiFunc.RunGetDifficultyMultiplier());
-		int amountCurve1Value = (int)__instance.amountCurve1.Evaluate(SemiFunc.RunGetDifficultyMultiplier());
-
-        string logCurveValues = "Enemy setup counts: " + amountCurve3Value + ", " + amountCurve2Value + ", " + amountCurve1Value;
-        amountCurve3Value *= SpawnConfig.configManager.enemyGroupMultiplier.Value;
-        amountCurve2Value *= SpawnConfig.configManager.enemyGroupMultiplier.Value;
-        amountCurve1Value *= SpawnConfig.configManager.enemyGroupMultiplier.Value;
-        SpawnConfig.Logger.LogInfo(logCurveValues + " => " + amountCurve3Value + ", " + amountCurve2Value + ", " + amountCurve1Value);
-
-        SpawnConfig.Logger.LogInfo("Picking difficulty 3 enemy setups:");
-        for (int i = 0; i < amountCurve3Value; i++)
-		{
-			__instance.PickEnemies(__instance.enemiesDifficulty3);
-		}
-        SpawnConfig.Logger.LogInfo("Picking difficulty 2 enemy setups:");
-		for (int j = 0; j < amountCurve2Value; j++)
-		{
-			__instance.PickEnemies(__instance.enemiesDifficulty2);
-		}
-        SpawnConfig.Logger.LogInfo("Picking difficulty 1 enemy setups:");
-		for (int k = 0; k < amountCurve1Value; k++)
-		{
-			__instance.PickEnemies(__instance.enemiesDifficulty1);
-		}
-        __instance.amountCurve3Value = amountCurve3Value;
-        __instance.amountCurve2Value = amountCurve2Value;
-        __instance.amountCurve1Value = amountCurve1Value;
-		__instance.totalAmount = amountCurve1Value + amountCurve2Value + amountCurve3Value;
-
-        SpawnConfig.Logger.LogInfo("Enemy setup total = " + __instance.totalAmount);
-        return false;
-    } 
-
     [HarmonyPatch("PickEnemies")]
-    [HarmonyPostfix]
-    public static void LogPickEnemies(List<EnemySetup> _enemiesList, EnemyDirector __instance){
-        SpawnConfig.Logger.LogInfo(__instance.enemyList[__instance.enemyList.Count - 1].name);
+    [HarmonyPrefix]
+    public static bool PickEnemiesOverride(List<EnemySetup> _enemiesList, EnemyDirector __instance){
+        SpawnConfig.Logger.LogInfo("Picking difficulty " + currentDifficultyPick + " enemy");
+        int num = DataDirector.instance.SettingValueFetch(DataDirector.Setting.RunsPlayed);
+        List<EnemySetup> possibleEnemies = [];
+
+        // Make list of pickable setups
+        int weightSum = 0;
+        foreach(EnemySetup enemy in _enemiesList){
+            if ((enemy.levelsCompletedCondition && (RunManager.instance.levelsCompleted < enemy.levelsCompletedMin || RunManager.instance.levelsCompleted > enemy.levelsCompletedMax)) || num < enemy.runsPlayed)
+			{
+				continue;
+			}
+
+            int weight = 0;
+            if(currentDifficultyPick == 3) weight = extendedSetups[enemy.name].difficulty3Weight;
+            if(currentDifficultyPick == 2) weight = extendedSetups[enemy.name].difficulty2Weight;
+            if(currentDifficultyPick == 1) weight = extendedSetups[enemy.name].difficulty1Weight;
+
+            if (weight < 1) continue;
+
+            weightSum += weight;
+            possibleEnemies.Add(enemy);
+            SpawnConfig.Logger.LogInfo(enemy.name + " = " + weight);
+        }
+
+        // Pick setup
+        EnemySetup item = null;
+        int randRoll = Random.Range(1, weightSum);
+        foreach (EnemySetup enemy in possibleEnemies) {
+            int weight = 0;
+            if(currentDifficultyPick == 3) weight = extendedSetups[enemy.name].difficulty3Weight;
+            if(currentDifficultyPick == 2) weight = extendedSetups[enemy.name].difficulty2Weight;
+            if(currentDifficultyPick == 1) weight = extendedSetups[enemy.name].difficulty1Weight;
+
+            SpawnConfig.Logger.LogInfo("=> " + enemy.name + " = " + weight + " / " + randRoll);
+
+            if (weight >= randRoll) {
+                item = enemy;
+                break;
+            }else{
+                randRoll -= weight;
+            }
+        }
+        __instance.enemyList.Add(item);
+
+        // Skip vanilla code
+        currentDifficultyPick = 1;
+        return false;
     }
 
 }

@@ -1,6 +1,5 @@
 using System.Collections.Generic;
 using HarmonyLib;
-using Photon.Pun;
 using UnityEngine;
 
 namespace SpawnConfig.Patches;
@@ -11,26 +10,15 @@ public class LevelGeneratorPatch {
 
     [HarmonyPatch("EnemySpawn")]
     [HarmonyPrefix]
-    public static bool LogAndModifySpawns(EnemySetup enemySetup, Vector3 position, LevelGenerator __instance){
+    public static void LogAndModifySpawns(EnemySetup enemySetup, Vector3 position, LevelGenerator __instance){
 
-        foreach (GameObject spawnObject in enemySetup.spawnObjects)
-		{
-			GameObject gameObject = (GameManager.instance.gameMode != 0) ? PhotonNetwork.InstantiateRoomObject(__instance.ResourceEnemies + "/" + spawnObject.name, position, Quaternion.identity, 0) : UnityEngine.Object.Instantiate(spawnObject, position, Quaternion.identity);
-			EnemyParent component = gameObject.GetComponent<EnemyParent>();
-			if ((bool)component)
-			{
-				component.SetupDone = true;
-				gameObject.GetComponentInChildren<Enemy>().EnemyTeleported(position);
-				__instance.EnemiesSpawnTarget++;
-				EnemyDirector.instance.FirstSpawnPointAdd(component);
-                SpawnConfig.Logger.LogInfo(component.Enemy.Health.health);
-                SpawnConfig.Logger.LogInfo(component.Enemy.Health.healthCurrent);
-			}
-		}
-
-        // Logging
+        // Logging & individual enemy type disabling
         Dictionary<string, int> spawnObjects = new();
         foreach (GameObject spawnObject in enemySetup.spawnObjects){
+            if(spawnObject.name == "ww"){
+                // TODO
+            }
+
             if(spawnObjects.ContainsKey(spawnObject.name)){
                 spawnObjects[spawnObject.name] = spawnObjects[spawnObject.name] + 1;
             }else{
@@ -48,10 +36,8 @@ public class LevelGeneratorPatch {
             // "Safe" way of doing it without having to skip the original PickEnemies logic
             enemySetup.spawnObjects.Clear();
             SpawnConfig.Logger.LogInfo("Forcibly prevented all spawns!");
-            return false;
+            return;
         }
-
-        return false;
     }
 
 }

@@ -1,7 +1,9 @@
+using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using Newtonsoft.Json;
-using SpawnConfig.Patches;
+using UnityEngine;
+using static SpawnConfig.ListManager;
 
 namespace SpawnConfig.ExtendedClasses;
 
@@ -13,9 +15,9 @@ public class ExtendedEnemySetup {
     public int levelsCompletedMin = 0;
     public int runsPlayed = 0;
     public string[] spawnObjects = [];
-    public int difficultyOneWeight = 0;
-    public int difficultyTwoWeight = 0;
-    public int difficultyThreeWeight = 0;
+    public int difficulty1Weight = 0;
+    public int difficulty2Weight = 0;
+    public int difficulty3Weight = 0;
     public bool preventAllOthers = false;
     public double manorWeightModifier = 1.0;
     public double arcticWeightModifier = 1.0;
@@ -33,13 +35,25 @@ public class ExtendedEnemySetup {
         levelsCompletedMax = enemySetup.levelsCompletedMax;
         levelsCompletedMin = enemySetup.levelsCompletedMin;
         runsPlayed = enemySetup.runsPlayed;
-        spawnObjects = enemySetup.spawnObjects.Select(obj => obj.name.Replace("Enemy - ", "")).ToArray();
-        difficultyOneWeight = (difficulty == 1) ? 100 : 0;
-        difficultyTwoWeight = (difficulty == 2) ? 100 : 0;
-        difficultyThreeWeight = (difficulty == 3) ? 100 : 0;
+        spawnObjects = enemySetup.spawnObjects.Select(obj => obj.name).ToArray();
+        difficulty1Weight = (difficulty == 1) ? 100 : 0;
+        difficulty2Weight = (difficulty == 2) ? 100 : 0;
+        difficulty3Weight = (difficulty == 3) ? 100 : 0;
     }
-    public EnemySetup ToVanillaObject(EnemySetup enemySetup){
-        return enemySetup;
+    public EnemySetup GetEnemySetup(Dictionary<string, GameObject> spawnObjectsDict1){
+        EnemySetup en = ScriptableObject.CreateInstance<EnemySetup>();
+        en.name = name;
+        en.spawnObjects = [];
+        en.levelsCompletedCondition = levelsCompletedCondition;
+        en.levelsCompletedMin = levelsCompletedMin;
+        en.levelsCompletedMax = levelsCompletedMax;
+        en.runsPlayed = runsPlayed;
+
+        foreach (string objName in spawnObjects){
+            en.spawnObjects.Add(spawnObjectsDict1[objName]);
+        }
+
+        return en;
     }
     public void UpdateWithDefaults(ExtendedEnemySetup defaultSetup){
 
@@ -48,22 +62,11 @@ public class ExtendedEnemySetup {
         foreach (PropertyInfo property in properties) {
             object defaultValue = property.GetValue(defaultSetup);
             object customValue = property.GetValue(this);
-            object newDefaultValue = property.GetValue(EnemyDirectorPatch.extendedSetups[defaultSetup.name]);
+            object newDefaultValue = property.GetValue(extendedSetups[defaultSetup.name]);
 
             if(defaultValue == customValue && newDefaultValue != defaultValue){
                 SpawnConfig.Logger.LogInfo(property + " = " + customValue);
                 property.SetValue(this, newDefaultValue);
-            }
-        }
-    }
-
-    public void UpdateUnconditional(object obj){
-        PropertyInfo[] customProperties = obj.GetType().GetProperties();
-        PropertyInfo[] myProperties = this.GetType().GetProperties();
-
-        foreach (PropertyInfo property in customProperties) {
-            if(myProperties.Contains(property)){
-                property.SetValue(this, property.GetValue(obj));
             }
         }
     }

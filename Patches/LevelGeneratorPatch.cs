@@ -1,6 +1,6 @@
 using System.Collections.Generic;
 using HarmonyLib;
-using Unity.VisualScripting;
+using Photon.Pun;
 using UnityEngine;
 
 namespace SpawnConfig.Patches;
@@ -11,7 +11,22 @@ public class LevelGeneratorPatch {
 
     [HarmonyPatch("EnemySpawn")]
     [HarmonyPrefix]
-    public static void LogAndModifySpawns(EnemySetup enemySetup, Vector3 position, LevelGenerator __instance){
+    public static bool LogAndModifySpawns(EnemySetup enemySetup, Vector3 position, LevelGenerator __instance){
+
+        foreach (GameObject spawnObject in enemySetup.spawnObjects)
+		{
+			GameObject gameObject = (GameManager.instance.gameMode != 0) ? PhotonNetwork.InstantiateRoomObject(__instance.ResourceEnemies + "/" + spawnObject.name, position, Quaternion.identity, 0) : UnityEngine.Object.Instantiate(spawnObject, position, Quaternion.identity);
+			EnemyParent component = gameObject.GetComponent<EnemyParent>();
+			if ((bool)component)
+			{
+				component.SetupDone = true;
+				gameObject.GetComponentInChildren<Enemy>().EnemyTeleported(position);
+				__instance.EnemiesSpawnTarget++;
+				EnemyDirector.instance.FirstSpawnPointAdd(component);
+                SpawnConfig.Logger.LogInfo(component.Enemy.Health.health);
+                SpawnConfig.Logger.LogInfo(component.Enemy.Health.healthCurrent);
+			}
+		}
 
         // Logging
         Dictionary<string, int> spawnObjects = new();
@@ -33,8 +48,10 @@ public class LevelGeneratorPatch {
             // "Safe" way of doing it without having to skip the original PickEnemies logic
             enemySetup.spawnObjects.Clear();
             SpawnConfig.Logger.LogInfo("Forcibly prevented all spawns!");
-            return;
+            return false;
         }
+
+        return false;
     }
 
 }

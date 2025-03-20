@@ -1,4 +1,3 @@
-using System;
 using BepInEx.Configuration;
 
 namespace SpawnConfig;

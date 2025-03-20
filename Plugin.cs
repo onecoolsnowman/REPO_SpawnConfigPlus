@@ -24,6 +24,7 @@ public class SpawnConfig : BaseUnityPlugin
     internal static readonly string spawnObjectsCfg = Path.Combine(exportPath, "Enemies.json");
     internal static readonly string defaultSpawnObjectsCfg = Path.Combine(exportPath, "Defaults", "Enemies.json");
     internal static readonly string enemySetupsCfg = Path.Combine(exportPath, "SpawnGroups.json");
+    internal static readonly string explanationCfg = Path.Combine(exportPath, "SpawnGroups-Explained.json");
     internal static readonly string defaultEnemySetupsCfg = Path.Combine(exportPath, "Defaults", "SpawnGroups.json");
 
     private void Awake()
@@ -83,6 +84,10 @@ public class SpawnConfig : BaseUnityPlugin
     }
 
     public static void ReadAndUpdateJSON(){
+
+        // Save config explanation file
+        ExtendedEnemyExplained[] explained = [new ExtendedEnemyExplained()];
+        File.WriteAllText(explanationCfg, JsonConvert.SerializeObject(explained, Formatting.Indented));
 
         // Read default EnemySetup configs
         ExtendedEnemySetup[] defaultSetupsList = GetObjArrayFromJSON(defaultEnemySetupsCfg);

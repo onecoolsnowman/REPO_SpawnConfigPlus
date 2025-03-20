@@ -31,8 +31,10 @@ public class LevelGeneratorPatch {
         if(bangCheck) enemySetup.spawnObjects.Insert(0, spawnObjectsDict["Bang Director"]);
 
         // Modify the amount of enemies randomly
-        int randRoll = UnityEngine.Random.Range(1, 100);
-        if(randRoll <= extendedSetups[enemySetup.name].alterAmountChance && enemySetup.spawnObjects.Count > 0){
+        int max = (int)Math.Round(1 / extendedSetups[enemySetup.name].alterAmountChance);
+        if(max < 1) max = 1;
+        int randRoll = UnityEngine.Random.Range(1, max);
+        if(randRoll <= 1 && enemySetup.spawnObjects.Count > 0){
             
             // Randomly pick spawnObjects to add or remove more of
             int amountChange = UnityEngine.Random.Range(extendedSetups[enemySetup.name].alterAmountMin, extendedSetups[enemySetup.name].alterAmountMax);

@@ -24,7 +24,7 @@ public class ExtendedEnemySetup {
     //public double wizardWeightModifier = 1.0;
     [JsonIgnore]
     public int[] previousWeights = [0, 0, 0];
-    public int alterAmountChance = 0;
+    public double alterAmountChance = 0.0;
     public int alterAmountMin = 0;
     public int alterAmountMax = 0;
     public ExtendedEnemySetup (){

@@ -73,6 +73,15 @@ public class SpawnConfig : BaseUnityPlugin
         return temp;
     }
 
+    public static int PickNonDirector(EnemySetup enemySetup){
+        int pickedIndex = -1;
+        while(pickedIndex == -1){
+            int index = UnityEngine.Random.Range(0, enemySetup.spawnObjects.Count);
+            if(!enemySetup.spawnObjects[index].name.Contains("Director")) pickedIndex = index;
+        }
+        return pickedIndex;
+    }
+
     public static void ReadAndUpdateJSON(){
 
         // Read default EnemySetup configs
@@ -98,12 +107,9 @@ public class SpawnConfig : BaseUnityPlugin
 
         // Update custom setups with new the default values from the source code if necessary
         foreach(ExtendedEnemySetup obj in customSetupsList){
-            if (!extendedSetups.ContainsKey(obj.name)) {
-                // Add custom setups to the default value arrays to avoid errors
-                extendedSetups.Add(obj.name, obj);
-                defaultSetupsList.AddItem(obj);
+            if (extendedSetups.ContainsKey(obj.name)) {
+                obj.UpdateWithDefaults(defaultSetupsList[Array.FindIndex(defaultSetupsList, objTemp => objTemp.name == obj.name)]);
             }
-            obj.UpdateWithDefaults(defaultSetupsList[Array.FindIndex(defaultSetupsList, objTemp => objTemp.name == obj.name)]);
         }
 
         // Save custom setups with new updated default values to file

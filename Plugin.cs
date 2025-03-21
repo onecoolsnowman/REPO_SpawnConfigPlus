@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using BepInEx;
@@ -90,38 +91,41 @@ public class SpawnConfig : BaseUnityPlugin
         File.WriteAllText(explanationCfg, JsonConvert.SerializeObject(explained, Formatting.Indented));
 
         // Read default EnemySetup configs
-        ExtendedEnemySetup[] defaultSetupsList = GetObjArrayFromJSON(defaultEnemySetupsCfg);
+        ExtendedEnemySetup[] defaultSetupsArray = GetObjArrayFromJSON(defaultEnemySetupsCfg);
         // Read custom EnemySetup configs
-        ExtendedEnemySetup[] customSetupsList = GetObjArrayFromJSON(enemySetupsCfg);
+        ExtendedEnemySetup[] customSetupsArray = GetObjArrayFromJSON(enemySetupsCfg);
 
         // Save default ExtendedEnemySetups to file for comparison purposes on next launch
-        ExtendedEnemySetup[] extendedSetupsList = extendedSetups.Select(obj => obj.Value).ToArray();
-        File.WriteAllText(defaultEnemySetupsCfg, JsonConvert.SerializeObject(extendedSetupsList, Formatting.Indented));
-        if (customSetupsList.Length < 1) {
+        ExtendedEnemySetup[] extendedSetupsArray = extendedSetups.Select(obj => obj.Value).ToArray();
+        File.WriteAllText(defaultEnemySetupsCfg, JsonConvert.SerializeObject(extendedSetupsArray, Formatting.Indented));
+        if (customSetupsArray.Length < 1) {
             Logger.LogInfo("No custom config found! Creating default file and stopping early");
-            File.WriteAllText(enemySetupsCfg, JsonConvert.SerializeObject(extendedSetupsList, Formatting.Indented));
+            File.WriteAllText(enemySetupsCfg, JsonConvert.SerializeObject(extendedSetupsArray, Formatting.Indented));
             return;
         }
-        
-        // Add missing default setups back into the custom config
-        foreach(ExtendedEnemySetup obj in defaultSetupsList){
-            if(!customSetupsList.Any(x => x.name == obj.name)){
-                customSetupsList.AddItem(obj);
+
+        // Update custom setups with the default values from the source code where necessary
+        foreach(ExtendedEnemySetup custom in customSetupsArray){
+            if (extendedSetups.ContainsKey(custom.name)) {
+                custom.UpdateWithDefaults(defaultSetupsArray[Array.FindIndex(defaultSetupsArray, objTemp => objTemp.name == custom.name)]);
             }
         }
 
-        // Update custom setups with new the default values from the source code if necessary
-        foreach(ExtendedEnemySetup obj in customSetupsList){
-            if (extendedSetups.ContainsKey(obj.name)) {
-                obj.UpdateWithDefaults(defaultSetupsList[Array.FindIndex(defaultSetupsList, objTemp => objTemp.name == obj.name)]);
+        // Add missing enemies from source into the custom config
+        Dictionary<string, ExtendedEnemySetup> tempDict = customSetupsArray.ToDictionary(obj => obj.name);
+        foreach (KeyValuePair<string, ExtendedEnemySetup> source in extendedSetups) {
+            if(!tempDict.ContainsKey(source.Value.name) && configManager.addMissingGroups.Value){
+                Logger.LogInfo("Adding missing entry to custom config: " + source.Value.name);
+                tempDict.Add(source.Value.name, source.Value);
             }
         }
+        customSetupsArray = tempDict.Values.ToArray();
 
         // Save custom setups with new updated default values to file
-        File.WriteAllText(enemySetupsCfg, JsonConvert.SerializeObject(customSetupsList, Formatting.Indented));
+        File.WriteAllText(enemySetupsCfg, JsonConvert.SerializeObject(customSetupsArray, Formatting.Indented));
 
         // Replace vanilla extended setups with the custom ones so that the custom changes take effect ingame
-        extendedSetups = customSetupsList.ToDictionary(obj => obj.name);
+        extendedSetups = customSetupsArray.ToDictionary(obj => obj.name);
         
     }
 }

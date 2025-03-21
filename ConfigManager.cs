@@ -4,11 +4,14 @@ namespace SpawnConfig;
 
 public class ConfigManager {
     internal ConfigEntry<bool> preventSpawns = null!;
+    internal ConfigEntry<bool> addMissingGroups = null!;
     //internal ConfigEntry<bool> reduceRepeats = null!;
     //internal ConfigEntry<int> enemyGroupMultiplier = null!;
     //internal ConfigEntry<double> enemyCountMultiplier = null!;
     internal void Setup(ConfigFile configFile) {
         preventSpawns = configFile.Bind("General", "Prevent enemy spawning", false, new ConfigDescription("Prevent enemy spawning entirely, turning the game into a no-stakes gathering simulator or for when you want to test something in peace"));
+
+        addMissingGroups = configFile.Bind("General", "Re-add missing groups", true, new ConfigDescription("Whether the mod should update your custom SpawnGroups config at launch by adding all loaded enemy groups that are missing from it"));
 
         //reduceRepeats = configFile.Bind("General", "Reduce repeat spawns", false, new ConfigDescription("If set to true, enemy groups that have spawned in previous levels will have a lower chance of being selected again"));
 

@@ -27,8 +27,8 @@ public class LevelGeneratorPatch {
                 directorCount++;
             }
         }
-        if(gnomeCheck) enemySetup.spawnObjects.Insert(0, spawnObjectsDict["Gnome Director"]);
-        if(bangCheck) enemySetup.spawnObjects.Insert(0, spawnObjectsDict["Bang Director"]);
+        if(gnomeCheck) enemySetup.spawnObjects.Insert(0, spawnObjectsDict["Enemy - Gnome Director"]);
+        if(bangCheck) enemySetup.spawnObjects.Insert(0, spawnObjectsDict["Enemy - Bang Director"]);
 
         // Modify the amount of enemies randomly
         int max = (int)Math.Round(1 / extendedSetups[enemySetup.name].alterAmountChance);

@@ -14,9 +14,9 @@ public class EnemyDirectorPatch {
     public static int currentDifficultyPick = 3;
     public static bool onlyOneSetup = false;
 
-    [HarmonyPatch("Awake")]
+    [HarmonyPatch("Start")]
     [HarmonyPostfix]
-    public static void SetupOnAwake(EnemyDirector __instance){
+    public static void SetupOnStart(EnemyDirector __instance){
 
         // Only do it once
         if (!setupDone) {
@@ -30,7 +30,7 @@ public class EnemyDirectorPatch {
 
                     // Save enemy spawnObjects to our own dict for adding custom setups later
                     foreach (GameObject spawnObject in enemySetup.spawnObjects){
-                        spawnObject.name = spawnObject.name.Replace("Enemy - ", "");
+                        spawnObject.name = spawnObject.name;
                         ExtendedSpawnObject extendedObj = new(spawnObject);
                         if (!spawnObjectsDict.ContainsKey(spawnObject.name)){
                             spawnObjectsDict.Add(spawnObject.name, spawnObject);
@@ -39,7 +39,6 @@ public class EnemyDirectorPatch {
                     }
                     
                     // Extend object
-                    enemySetup.name = enemySetup.name.Replace("Enemy - ", "").Replace("Enemy Group - ", "");
                     enemySetupsDict.Add(enemySetup.name, enemySetup);
                     ExtendedEnemySetup extendedSetup = new(enemySetup, x);
 
@@ -52,14 +51,30 @@ public class EnemyDirectorPatch {
             }
             
             // Log Dictionary contents
-            SpawnConfig.Logger.LogDebug("Found the following enemy spawnObjects:");
-            foreach (KeyValuePair<string, ExtendedSpawnObject> entry in extendedSpawnObjects){
-                SpawnConfig.Logger.LogDebug(entry.Key);
+            SpawnConfig.Logger.LogInfo("Found the following enemy spawnObjects:");
+            foreach (KeyValuePair<string, GameObject> entry in spawnObjectsDict){
+                SpawnConfig.Logger.LogInfo(entry.Key);
             }
 
             // Read / update JSON configs
             SpawnConfig.ReadAndUpdateJSON();
             setupDone = true;
+
+            // Remove groups with invalid enemy names
+            List<string> invalidGroups = [];
+            foreach (KeyValuePair<string, ExtendedEnemySetup> ext in extendedSetups) {
+                bool invalid = false;
+                foreach(string sp in ext.Value.spawnObjects){
+                    if(!spawnObjectsDict.ContainsKey(sp)) {
+                        SpawnConfig.Logger.LogError("Unable to resolve enemy name \"" + sp + "\" in group \"" + ext.Value.name+ "\"! This group will be ignored");
+                        invalid = true;
+                    }
+                }
+                if(invalid) invalidGroups.Add(ext.Key);
+            }
+            foreach (string sp in invalidGroups) {
+                extendedSetups.Remove(sp);
+            }
 
         }
     }
@@ -69,7 +84,7 @@ public class EnemyDirectorPatch {
     public static void AmountSetupOverride(EnemyDirector __instance){
 
         // Update enemiesDifficulty lists with customized setups
-        // Gotta do it here because it seems that the enemiesDifficulty lists get reset to their default values between Awake() and AmountSetup() - Not sure at what point exactly
+        // Gotta do it here because it seems that the enemiesDifficulty lists get reset to their default values between Awake() and AmountSetup() - And doing it here is required so we can replace the spawnObjects with empty lists for the duration of one level only
         __instance.enemiesDifficulty1.Clear();
         __instance.enemiesDifficulty2.Clear();
         __instance.enemiesDifficulty3.Clear();
@@ -80,9 +95,6 @@ public class EnemyDirectorPatch {
             if(ext.Value.difficulty2Weight > 0) __instance.enemiesDifficulty2.Add(ext.Value.GetEnemySetup());
             if(ext.Value.difficulty3Weight > 0) __instance.enemiesDifficulty3.Add(ext.Value.GetEnemySetup());
         }
-        SpawnConfig.Logger.LogInfo("Difficulty 3 EnemySetups: " + __instance.enemiesDifficulty3.Count);
-        SpawnConfig.Logger.LogInfo("Difficulty 2 EnemySetups: " + __instance.enemiesDifficulty2.Count);
-        SpawnConfig.Logger.LogInfo("Difficulty 1 EnemySetups: " + __instance.enemiesDifficulty1.Count);
     }
 
     [HarmonyPatch("PickEnemies")]

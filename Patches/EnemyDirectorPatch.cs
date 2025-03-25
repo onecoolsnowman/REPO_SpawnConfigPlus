@@ -3,6 +3,7 @@ using HarmonyLib;
 using SpawnConfig.ExtendedClasses;
 using static SpawnConfig.ListManager;
 using UnityEngine;
+using System.Linq;
 
 namespace SpawnConfig.Patches;
 
@@ -28,7 +29,7 @@ public class EnemyDirectorPatch {
 
                 foreach (EnemySetup enemySetup in enemiesDifficulty){
 
-                    // Save enemy spawnObjects to our own dict for adding custom setups later
+                    // Make list of functional enemy spawnObjects
                     foreach (GameObject spawnObject in enemySetup.spawnObjects){
                         spawnObject.name = spawnObject.name;
                         ExtendedSpawnObject extendedObj = new(spawnObject);
@@ -38,11 +39,8 @@ public class EnemyDirectorPatch {
                         }
                     }
                     
-                    // Extend object
-                    enemySetupsDict.Add(enemySetup.name, enemySetup);
+                    // Make list of extended enemy setups
                     ExtendedEnemySetup extendedSetup = new(enemySetup, x);
-
-                    // Save extended enemy setups to our own dict for later reusal
                     if(!extendedSetups.ContainsKey(enemySetup.name)){
                         extendedSetups.Add(extendedSetup.name, extendedSetup);
                     }
@@ -50,15 +48,24 @@ public class EnemyDirectorPatch {
                 x--;
             }
             
-            // Log Dictionary contents
+            // Log default spawnObjects
             SpawnConfig.Logger.LogInfo("Found the following enemy spawnObjects:");
             foreach (KeyValuePair<string, GameObject> entry in spawnObjectsDict){
                 SpawnConfig.Logger.LogInfo(entry.Key);
             }
 
+            // Get default enemy group counts per level
+            for(float y = 0.0f; y < 1.1f; y+=0.1f){
+                difficulty3Counts.Add((int)__instance.amountCurve3.Evaluate(y));
+                difficulty2Counts.Add((int)__instance.amountCurve2.Evaluate(y));
+                difficulty1Counts.Add((int)__instance.amountCurve1.Evaluate(y));
+            }
+            for(int z = 0; z < difficulty1Counts.Count; z++){
+                groupCountsList.Add(new ExtendedGroupCounts(z));
+            }
+
             // Read / update JSON configs
             SpawnConfig.ReadAndUpdateJSON();
-            setupDone = true;
 
             // Remove groups with invalid enemy names
             List<string> invalidGroups = [];
@@ -76,6 +83,7 @@ public class EnemyDirectorPatch {
                 extendedSetups.Remove(sp);
             }
 
+            setupDone = true;
         }
     }
 
@@ -83,19 +91,79 @@ public class EnemyDirectorPatch {
     [HarmonyPrefix]
     public static void AmountSetupOverride(EnemyDirector __instance){
 
+        // Clear default animation curves
+        // Modifying the curves in Start() does not work as they are reset afterwards at some unknown point in time
+        /*
+        __instance.amountCurve3 = new AnimationCurve();
+        __instance.amountCurve2 = new AnimationCurve();
+        __instance.amountCurve1 = new AnimationCurve();
+
+        // Fill curves using custom config
+        Dictionary<int, ExtendedGroupCounts> groupCountsDict = groupCountsList.ToDictionary(obj => obj.level);
+        int highest = 11;
+        int previousDiff3Value = 0;
+        int previousDiff2Value = 0;
+        int previousDiff1Value = 0;
+        for(int i = 1; i < highest; i++){
+
+            // Get values from config if they exist (default to previous level's values if nothing is found)
+            // Saving a key for every increment of 0.1 because I don't know if the AnimationCurve does some sort of gradual change between key values instead of keeping the previous value constant until changed
+            float index = (i - 1) / 10;
+            int diff3Value = previousDiff3Value;
+            int diff2Value = previousDiff2Value;
+            int diff1Value = previousDiff1Value;
+            if(groupCountsDict.ContainsKey(i)){
+                // Pick random list from the object and use its values if it's large enough
+                ExtendedGroupCounts egc = groupCountsDict[i];
+                List<int> groupCounts = groupCountsDict[i].possibleGroupCounts[UnityEngine.Random.Range(0, egc.possibleGroupCounts.Count)];
+                if(groupCounts.Count < 3){
+                    // Skip the current list with error
+                    SpawnConfig.Logger.LogError("Group counts array [" + string.Join(",", groupCounts) + "] must contain 3 elements! The custom config for level " + egc.level + " will be ignored! The previous level's group counts will be used instead");
+                }else{
+                    diff3Value = groupCounts[2];
+                    diff2Value = groupCounts[1];
+                    diff1Value = groupCounts[0];
+                }
+            }
+            
+            __instance.amountCurve3.AddKey(new Keyframe(index, diff3Value));
+            __instance.amountCurve2.AddKey(new Keyframe(index, diff2Value));
+            __instance.amountCurve1.AddKey(new Keyframe(index, diff1Value));
+            previousDiff3Value = diff3Value;
+            previousDiff2Value = diff2Value;
+            previousDiff1Value = diff1Value;
+        }
+
+        // Log animation curves for debugging
+        SpawnConfig.Logger.LogInfo("AnimationCurves:");
+        for(float x = 0.0f; x < highest; x += 0.1f){
+            SpawnConfig.Logger.LogInfo(x + " (diff 3) = " + __instance.amountCurve3.Evaluate(x));
+            //SpawnConfig.Logger.LogInfo(x + " (diff 2) = " + __instance.amountCurve2.Evaluate(x));
+            //SpawnConfig.Logger.LogInfo(x + " (diff 1) = " + __instance.amountCurve1.Evaluate(x));
+        }
+        */
+
         // Update enemiesDifficulty lists with customized setups
         // Gotta do it here because it seems that the enemiesDifficulty lists get reset to their default values between Awake() and AmountSetup() - And doing it here is required so we can replace the spawnObjects with empty lists for the duration of one level only
         __instance.enemiesDifficulty1.Clear();
         __instance.enemiesDifficulty2.Clear();
         __instance.enemiesDifficulty3.Clear();
         onlyOneSetup = false;
-
         foreach (KeyValuePair<string, ExtendedEnemySetup> ext in extendedSetups) {
             if(ext.Value.difficulty1Weight > 0) __instance.enemiesDifficulty1.Add(ext.Value.GetEnemySetup());
             if(ext.Value.difficulty2Weight > 0) __instance.enemiesDifficulty2.Add(ext.Value.GetEnemySetup());
             if(ext.Value.difficulty3Weight > 0) __instance.enemiesDifficulty3.Add(ext.Value.GetEnemySetup());
         }
+
+        // Fill up with empty objects if required to prevent errors
+        EnemySetup emptySetup = ScriptableObject.CreateInstance<EnemySetup>();
+        emptySetup.name = "Fallback";
+        emptySetup.spawnObjects = [];
+        if(__instance.enemiesDifficulty1.Count < 1) __instance.enemiesDifficulty1.Add(emptySetup);
+        if(__instance.enemiesDifficulty2.Count < 1) __instance.enemiesDifficulty2.Add(emptySetup);
+        if(__instance.enemiesDifficulty3.Count < 1) __instance.enemiesDifficulty3.Add(emptySetup);
     }
+
 
     [HarmonyPatch("PickEnemies")]
     [HarmonyPrefix]
@@ -119,10 +187,8 @@ public class EnemyDirectorPatch {
 			}
 
             // Weight logic
-            int weight = 0;
-            if(currentDifficultyPick == 3) weight = extendedSetups[enemy.name].difficulty3Weight;
-            if(currentDifficultyPick == 2) weight = extendedSetups[enemy.name].difficulty2Weight;
-            if(currentDifficultyPick == 1) weight = extendedSetups[enemy.name].difficulty1Weight;
+            int weight = 1;
+            if (extendedSetups.ContainsKey(enemy.name)) weight = extendedSetups[enemy.name].GetWeight(currentDifficultyPick);
             if (weight < 1) continue;
             weightSum += weight;
 
@@ -132,13 +198,11 @@ public class EnemyDirectorPatch {
 
         // Pick EnemySetup
         EnemySetup item = null;
-        int randRoll = UnityEngine.Random.Range(1, weightSum);
+        int randRoll = UnityEngine.Random.Range(1, weightSum + 1);
         foreach (EnemySetup enemy in possibleEnemies) {
-            int weight = 0;
-            if(currentDifficultyPick == 3) weight = extendedSetups[enemy.name].difficulty3Weight;
-            if(currentDifficultyPick == 2) weight = extendedSetups[enemy.name].difficulty2Weight;
-            if(currentDifficultyPick == 1) weight = extendedSetups[enemy.name].difficulty1Weight;
 
+            int weight = 1;
+            if (extendedSetups.ContainsKey(enemy.name)) weight = extendedSetups[enemy.name].GetWeight(currentDifficultyPick);
             SpawnConfig.Logger.LogDebug("=> " + enemy.name + " = " + weight + " / " + randRoll);
 
             if (weight >= randRoll) {
@@ -157,7 +221,7 @@ public class EnemyDirectorPatch {
         }
         
         // Replace all other EnemySetups with empty objects if only this one should spawn
-        if(extendedSetups[item.name].thisGroupOnly && !onlyOneSetup){
+        if(extendedSetups.ContainsKey(item.name) && extendedSetups[item.name].thisGroupOnly && !onlyOneSetup){
             
             List<string> names = [];
             int count = __instance.enemyList.Count;

@@ -10,6 +10,23 @@ namespace SpawnConfig.Patches;
 
 public class LevelGeneratorPatch {
 
+    public static int PickNonDirector(EnemySetup enemySetup){
+        int pickedIndex = -1;
+        int min = 0;
+        int max = enemySetup.spawnObjects.Count;    // Exlusive!
+        while(pickedIndex == -1){
+            int index = UnityEngine.Random.Range(min, max);
+            if(!enemySetup.spawnObjects[index].name.Contains("Director")) {
+                pickedIndex = index;
+            }else{
+                if(min == max) pickedIndex = min;
+                else if(index == min) min++;
+                else if(index == max) max--;
+            }
+        }
+        return pickedIndex;
+    }
+
     [HarmonyPatch("EnemySpawn")]
     [HarmonyPrefix]
     public static void LogAndModifySpawns(EnemySetup enemySetup, Vector3 position, LevelGenerator __instance){
@@ -31,22 +48,24 @@ public class LevelGeneratorPatch {
         if(bangCheck) enemySetup.spawnObjects.Insert(0, spawnObjectsDict["Enemy - Bang Director"]);
 
         // Modify the amount of enemies randomly
-        int max = (int)Math.Round(1 / extendedSetups[enemySetup.name].alterAmountChance);
-        if(max < 1) max = 1;
-        int randRoll = UnityEngine.Random.Range(1, max);
-        if(randRoll <= 1 && enemySetup.spawnObjects.Count > 0){
-            
-            // Randomly pick spawnObjects to add or remove more of
-            int amountChange = UnityEngine.Random.Range(extendedSetups[enemySetup.name].alterAmountMin, extendedSetups[enemySetup.name].alterAmountMax);
-            if(amountChange > 0){
-                while(amountChange > 0){
-                    enemySetup.spawnObjects.Add(enemySetup.spawnObjects[SpawnConfig.PickNonDirector(enemySetup)]);
-                    amountChange--;
-                }
-            }else if(amountChange < 0){
-                while(amountChange < 0 && enemySetup.spawnObjects.Count > 1){
-                    enemySetup.spawnObjects.RemoveAt(SpawnConfig.PickNonDirector(enemySetup));
-                    amountChange++;
+        if(extendedSetups.ContainsKey(enemySetup.name)){
+            int max = (int)Math.Round(1 / extendedSetups[enemySetup.name].alterAmountChance);
+            if(max < 1) max = 1;
+            int randRoll = UnityEngine.Random.Range(1, max + 1);
+            if(randRoll <= 1 && enemySetup.spawnObjects.Count > 0){
+                
+                // Randomly pick spawnObjects to add or remove more of
+                int amountChange = UnityEngine.Random.Range(extendedSetups[enemySetup.name].alterAmountMin, extendedSetups[enemySetup.name].alterAmountMax + 1);
+                if(amountChange > 0){
+                    while(amountChange > 0){
+                        enemySetup.spawnObjects.Add(enemySetup.spawnObjects[PickNonDirector(enemySetup)]);
+                        amountChange--;
+                    }
+                }else if(amountChange < 0){
+                    while(amountChange < 0 && enemySetup.spawnObjects.Count > 1){
+                        enemySetup.spawnObjects.RemoveAt(PickNonDirector(enemySetup));
+                        amountChange++;
+                    }
                 }
             }
         }
@@ -65,6 +84,7 @@ public class LevelGeneratorPatch {
             if(logString != "") logString += ", ";
             logString += obj.Key + " x " + obj.Value;
         }
+        if(logString == "") logString = "No spawns or prevented for this level";
 
         SpawnConfig.Logger.LogInfo("Attempting to spawn: [" + enemySetup.name + "]   (" + logString.Replace("Enemy - ", "") + ")");
         if(SpawnConfig.configManager.preventSpawns.Value){

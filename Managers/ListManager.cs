@@ -9,4 +9,8 @@ public class ListManager {
     public static Dictionary<string, GameObject> spawnObjectsDict = [];
     public static Dictionary<string, ExtendedEnemySetup> extendedSetups = [];
     public static Dictionary<string, ExtendedSpawnObject> extendedSpawnObjects = [];
+    public static List<int> difficulty1Counts = [];
+    public static List<int> difficulty2Counts = [];
+    public static List<int> difficulty3Counts = [];
+    public static List<ExtendedGroupCounts> groupCountsList = [];
 }

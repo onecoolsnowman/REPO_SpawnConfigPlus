@@ -22,11 +22,13 @@ public class SpawnConfig : BaseUnityPlugin
     internal static ConfigFile Conf = null!;
     internal static readonly string configVersion = "1.0";
     internal static readonly string exportPath = Path.Combine(Paths.ConfigPath, MyPluginInfo.PLUGIN_NAME);
-    internal static readonly string spawnObjectsCfg = Path.Combine(exportPath, "Enemies.json");
-    internal static readonly string defaultSpawnObjectsCfg = Path.Combine(exportPath, "Defaults", "Enemies.json");
-    internal static readonly string enemySetupsCfg = Path.Combine(exportPath, "SpawnGroups.json");
+    //internal static readonly string spawnObjectsCfg = Path.Combine(exportPath, "Enemies.json");
+    //internal static readonly string defaultSpawnObjectsCfg = Path.Combine(exportPath, "Defaults", "Enemies.json");
+    internal static readonly string spawnGroupsCfg = Path.Combine(exportPath, "SpawnGroups.json");
     internal static readonly string explanationCfg = Path.Combine(exportPath, "SpawnGroups-Explained.json");
-    internal static readonly string defaultEnemySetupsCfg = Path.Combine(exportPath, "Defaults", "SpawnGroups.json");
+    internal static readonly string defaultSpawnGroupsCfg = Path.Combine(exportPath, "Defaults", "SpawnGroups.json");
+    internal static readonly string groupsPerLevelCfg = Path.Combine(exportPath, "GroupsPerLevel.json");
+    internal static readonly string defaultGroupsPerLevelCfg = Path.Combine(exportPath, "Defaults", "GroupsPerLevel.json");
 
     private void Awake()
     {
@@ -64,68 +66,64 @@ public class SpawnConfig : BaseUnityPlugin
         Logger.LogDebug("Finished unpatching!");
     }
 
-    public static ExtendedEnemySetup[] GetObjArrayFromJSON(string path){
-        ExtendedEnemySetup[] temp = [];
-        if(File.Exists(path)){
-            string readFile = File.ReadAllText(path);
-            if(readFile != null && readFile != ""){
-                temp = JsonConvert.DeserializeObject<ExtendedEnemySetup[]>(readFile);
-            }
-        }
-        return temp;
-    }
-
-    public static int PickNonDirector(EnemySetup enemySetup){
-        int pickedIndex = -1;
-        while(pickedIndex == -1){
-            int index = UnityEngine.Random.Range(0, enemySetup.spawnObjects.Count);
-            if(!enemySetup.spawnObjects[index].name.Contains("Director")) pickedIndex = index;
-        }
-        return pickedIndex;
-    }
-
     public static void ReadAndUpdateJSON(){
 
         // Save config explanation file
-        ExtendedEnemyExplained[] explained = [new ExtendedEnemyExplained()];
+        List<ExtendedEnemyExplained> explained = [new ExtendedEnemyExplained()];
         File.WriteAllText(explanationCfg, JsonConvert.SerializeObject(explained, Formatting.Indented));
 
         // Read default EnemySetup configs
-        ExtendedEnemySetup[] defaultSetupsArray = GetObjArrayFromJSON(defaultEnemySetupsCfg);
+        List<ExtendedEnemySetup> defaultSetupsList = JsonManager.GetEESListFromJSON(defaultSpawnGroupsCfg);
         // Read custom EnemySetup configs
-        ExtendedEnemySetup[] customSetupsArray = GetObjArrayFromJSON(enemySetupsCfg);
+        List<ExtendedEnemySetup> customSetupsList = JsonManager.GetEESListFromJSON(spawnGroupsCfg);
+        // Read custom group counts config
+        List<ExtendedGroupCounts> customGroupCounts = JsonManager.GetEGCListFromJSON(groupsPerLevelCfg);
+
+        // Save default group counts to file
+        bool stopEarly = false;
+        /*
+        File.WriteAllText(defaultGroupsPerLevelCfg, JsonManager.GroupCountsToJSON(groupCountsList));
+        if(customGroupCounts.Count < 1){
+            Logger.LogInfo("No custom group count config found! Creating default file");
+            File.WriteAllText(groupsPerLevelCfg, JsonManager.GroupCountsToJSON(groupCountsList));
+            stopEarly = true;
+        }
+        */
 
         // Save default ExtendedEnemySetups to file for comparison purposes on next launch
-        ExtendedEnemySetup[] extendedSetupsArray = extendedSetups.Select(obj => obj.Value).ToArray();
-        File.WriteAllText(defaultEnemySetupsCfg, JsonConvert.SerializeObject(extendedSetupsArray, Formatting.Indented));
-        if (customSetupsArray.Length < 1) {
-            Logger.LogInfo("No custom config found! Creating default file and stopping early");
-            File.WriteAllText(enemySetupsCfg, JsonConvert.SerializeObject(extendedSetupsArray, Formatting.Indented));
-            return;
+        List<ExtendedEnemySetup> extendedSetupsList = extendedSetups.Select(obj => obj.Value).ToList();
+        File.WriteAllText(defaultSpawnGroupsCfg, JsonConvert.SerializeObject(extendedSetupsList, Formatting.Indented));
+        if (customSetupsList.Count < 1) {
+            Logger.LogInfo("No custom spawn groups config found! Creating default file");
+            File.WriteAllText(spawnGroupsCfg, JsonConvert.SerializeObject(extendedSetupsList, Formatting.Indented));
+            stopEarly = true;
         }
 
+        // Stop early check
+        if (stopEarly) return;
+
         // Update custom setups with the default values from the source code where necessary
-        foreach(ExtendedEnemySetup custom in customSetupsArray){
+        foreach(ExtendedEnemySetup custom in customSetupsList){
             if (extendedSetups.ContainsKey(custom.name)) {
-                custom.UpdateWithDefaults(defaultSetupsArray[Array.FindIndex(defaultSetupsArray, objTemp => objTemp.name == custom.name)]);
+                custom.UpdateWithDefaults(defaultSetupsList.Where(objTemp => objTemp.name == custom.name).FirstOrDefault());
             }
         }
 
         // Add missing enemies from source into the custom config
-        Dictionary<string, ExtendedEnemySetup> tempDict = customSetupsArray.ToDictionary(obj => obj.name);
+        Dictionary<string, ExtendedEnemySetup> tempDict = customSetupsList.ToDictionary(obj => obj.name);
         foreach (KeyValuePair<string, ExtendedEnemySetup> source in extendedSetups) {
             if(!tempDict.ContainsKey(source.Value.name) && configManager.addMissingGroups.Value){
                 Logger.LogInfo("Adding missing entry to custom config: " + source.Value.name);
                 tempDict.Add(source.Value.name, source.Value);
             }
         }
-        customSetupsArray = tempDict.Values.ToArray();
+        customSetupsList = tempDict.Values.ToList();
 
         // Save custom setups with new updated default values to file
-        File.WriteAllText(enemySetupsCfg, JsonConvert.SerializeObject(customSetupsArray, Formatting.Indented));
+        File.WriteAllText(spawnGroupsCfg, JsonConvert.SerializeObject(customSetupsList, Formatting.Indented));
 
         // Replace vanilla extended setups with the custom ones so that the custom changes take effect ingame
-        extendedSetups = customSetupsArray.ToDictionary(obj => obj.name);
+        extendedSetups = customSetupsList.ToDictionary(obj => obj.name);
         
     }
 }

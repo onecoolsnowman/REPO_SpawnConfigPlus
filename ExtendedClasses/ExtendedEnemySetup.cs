@@ -22,7 +22,6 @@ public class ExtendedEnemySetup {
     //public double manorWeightModifier = 1.0;
     //public double arcticWeightModifier = 1.0;
     //public double wizardWeightModifier = 1.0;
-    [JsonIgnore]
     public double alterAmountChance = 0.0;
     public int alterAmountMin = 0;
     public int alterAmountMax = 0;

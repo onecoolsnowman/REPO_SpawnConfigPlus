@@ -40,26 +40,30 @@ public class ExtendedEnemySetup {
         difficulty3Weight = (difficulty == 3) ? 100 : 0;
     }
     public EnemySetup GetEnemySetup () {
-        EnemySetup en = ScriptableObject.CreateInstance<EnemySetup>();
-        en.name = name;
-        en.spawnObjects = [];
-        en.levelsCompletedCondition = levelsCompletedCondition;
-        en.levelsCompletedMin = levelsCompletedMin;
-        en.levelsCompletedMax = levelsCompletedMax;
-        en.runsPlayed = runsPlayed;
+        EnemySetup es = ScriptableObject.CreateInstance<EnemySetup>();
+        es.name = name;
+        es.spawnObjects = [];
+        es.levelsCompletedCondition = levelsCompletedCondition;
+        es.levelsCompletedMin = levelsCompletedMin;
+        es.levelsCompletedMax = levelsCompletedMax;
+        es.runsPlayed = runsPlayed;
 
         foreach (string objName in spawnObjects){
-            en.spawnObjects.Add(spawnObjectsDict[objName]);
+            es.spawnObjects.Add(spawnObjectsDict[objName]);
         }
 
-        return en;
+        return es;
     }
 
-    public int GetWeight(int difficulty) {
+    public int GetWeight(int difficulty, List<EnemySetup> enemyList) {
 
         int weight = difficulty1Weight;
         if(difficulty == 2) weight = difficulty2Weight;
         else if(difficulty == 3) weight = difficulty3Weight;
+        if(enemyList.Select(obj => obj.name).ToList().Contains(name)) {
+            weight = (int)System.Math.Floor(weight * SpawnConfig.configManager.repeatMultiplier.Value);
+        }
+        if(weight < 0) weight = 0;
         return weight;
 
     }

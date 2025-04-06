@@ -54,7 +54,7 @@ public class LevelGeneratorPatch {
             int randRoll = UnityEngine.Random.Range(1, max + 1);
             if(randRoll <= 1 && enemySetup.spawnObjects.Count > 0){
                 
-                // Randomly pick spawnObjects to add or remove more of
+                // Randomly pick spawnObjects to add or remove
                 int amountChange = UnityEngine.Random.Range(extendedSetups[enemySetup.name].alterAmountMin, extendedSetups[enemySetup.name].alterAmountMax + 1);
                 if(amountChange > 0){
                     while(amountChange > 0){
@@ -84,7 +84,7 @@ public class LevelGeneratorPatch {
             if(logString != "") logString += ", ";
             logString += obj.Key + " x " + obj.Value;
         }
-        if(logString == "") logString = "No spawns or prevented for this level";
+        if(logString == "") logString = "No spawns or they were prevented for this level";
 
         SpawnConfig.Logger.LogInfo("Attempting to spawn: [" + enemySetup.name + "]   (" + logString.Replace("Enemy - ", "") + ")");
         if(SpawnConfig.configManager.preventSpawns.Value){

@@ -5,7 +5,8 @@ namespace SpawnConfig;
 public class ConfigManager {
     internal ConfigEntry<bool> preventSpawns = null!;
     internal ConfigEntry<bool> addMissingGroups = null!;
-    //internal ConfigEntry<bool> reduceRepeats = null!;
+    internal ConfigEntry<double> repeatMultiplier = null!;
+    internal ConfigEntry<bool> ignoreInvalidGroups = null!;
     //internal ConfigEntry<int> enemyGroupMultiplier = null!;
     //internal ConfigEntry<double> enemyCountMultiplier = null!;
     internal void Setup(ConfigFile configFile) {
@@ -13,9 +14,11 @@ public class ConfigManager {
 
         addMissingGroups = configFile.Bind("General", "Re-add missing groups", true, new ConfigDescription("Whether the mod should update your custom SpawnGroups config at launch by adding all loaded enemy groups that are missing from it"));
 
-        //reduceRepeats = configFile.Bind("General", "Reduce repeat spawns", false, new ConfigDescription("If set to true, enemy groups that have spawned in previous levels will have a lower chance of being selected again"));
+        repeatMultiplier = configFile.Bind("General", "Repeat spawn weight multiplier", 0.5, new ConfigDescription("All three weights of an enemy group will be multiplied by this value for the current level after having been selected once. Effectively reduces the chance of encountering multiple copies of the same group in one level. Set to 1.0 to \"disable\""));
 
-        //enemyGroupMultiplier = configFile.Bind("General", "Enemy Group Multiplier", 1, new ConfigDescription("The amount of enemy groups spawned each level is multiplied by this number. Currently seems to have no effect", new AcceptableValueRange<int>(1, 20), Array.Empty<object>()));
+        ignoreInvalidGroups = configFile.Bind("General", "Ignore groups with invalid spawnObjects", true, new ConfigDescription("If set to true, any group containing a single invalid spawn object will be ignored completely. If set to false, only the individual spawn object will be ignored and the group can still spawn as long as it contains at least one valid enemy"));
+
+        //enemyGroupMultiplier = configFile.Bind("General", "Enemy Group Multiplier", 1, new ConfigDescription("The amount of enemy groups spawned each level is multiplied by this number", new AcceptableValueRange<int>(1, 20), Array.Empty<object>()));
 
         //enemyCountMultiplier = configFile.Bind("General", "Enemy Count Multiplier", 1.0, new ConfigDescription("The amount of individual enemies per group is multiplied by this number. Warning: Some vanilla groups consist of as many as 10 small enemies. Setting this higher than 10 is not recommended", new AcceptableValueRange<double>(1.0, 100.0), Array.Empty<object>()));
     }

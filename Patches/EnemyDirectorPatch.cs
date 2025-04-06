@@ -67,18 +67,36 @@ public class EnemyDirectorPatch {
             // Read / update JSON configs
             SpawnConfig.ReadAndUpdateJSON();
 
-            // Remove groups with invalid enemy names
+            // Deal with invalid enemy names
             List<string> invalidGroups = [];
             foreach (KeyValuePair<string, ExtendedEnemySetup> ext in extendedSetups) {
                 bool invalid = false;
+                int index = 0;
+                List<int> objsToRemove = [];
                 foreach(string sp in ext.Value.spawnObjects){
                     if(!spawnObjectsDict.ContainsKey(sp)) {
-                        SpawnConfig.Logger.LogError("Unable to resolve enemy name \"" + sp + "\" in group \"" + ext.Value.name+ "\"! This group will be ignored");
-                        invalid = true;
+                        if(SpawnConfig.configManager.ignoreInvalidGroups.Value){
+                            SpawnConfig.Logger.LogError("Unable to resolve enemy name \"" + sp + "\" in group \"" + ext.Value.name+ "\"! This group will be ignored");
+                            invalid = true;
+                        }else{
+                            SpawnConfig.Logger.LogError("Unable to resolve enemy name \"" + sp + "\" in group \"" + ext.Value.name+ "\"! This enemy will be removed but the group can still spawn");
+                            objsToRemove.Add(index);
+                        }
                     }
+                    index++;
+                }
+                // Remove invalid objects from group (from highest to lowest index)
+                for(int i = objsToRemove.Count - 1; i > -1; i--){
+                    ext.Value.spawnObjects.RemoveAt(objsToRemove[i]);
+                }
+                // Group is invalid if no objects remain
+                if(ext.Value.spawnObjects.Count < 1 && !invalid){
+                    invalid = true;
+                    SpawnConfig.Logger.LogError("The group \"" + ext.Value.name+ "\" contains no valid enemies! This group will be ignored");
                 }
                 if(invalid) invalidGroups.Add(ext.Key);
             }
+            // Remove invalid groups
             foreach (string sp in invalidGroups) {
                 extendedSetups.Remove(sp);
             }
@@ -91,6 +109,7 @@ public class EnemyDirectorPatch {
     [HarmonyPrefix]
     public static void AmountSetupOverride(EnemyDirector __instance){
 
+        // WIP
         // Clear default animation curves
         // Modifying the curves in Start() does not work as they are reset afterwards at some unknown point in time
         /*
@@ -172,6 +191,7 @@ public class EnemyDirectorPatch {
         if(_enemiesList == __instance.enemiesDifficulty2) currentDifficultyPick = 2;
         if(_enemiesList == __instance.enemiesDifficulty3) currentDifficultyPick = 3;
         SpawnConfig.Logger.LogInfo("Picking difficulty " + currentDifficultyPick + " setup...");
+        SpawnConfig.Logger.LogInfo("Enemy group weights:");
 
         int num = DataDirector.instance.SettingValueFetch(DataDirector.Setting.RunsPlayed);
         List<EnemySetup> possibleEnemies = [];
@@ -188,7 +208,7 @@ public class EnemyDirectorPatch {
 
             // Weight logic
             int weight = 1;
-            if (extendedSetups.ContainsKey(enemy.name)) weight = extendedSetups[enemy.name].GetWeight(currentDifficultyPick);
+            if (extendedSetups.ContainsKey(enemy.name)) weight = extendedSetups[enemy.name].GetWeight(currentDifficultyPick, __instance.enemyList);
             if (weight < 1) continue;
             weightSum += weight;
 
@@ -199,15 +219,17 @@ public class EnemyDirectorPatch {
         // Pick EnemySetup
         EnemySetup item = null;
         int randRoll = UnityEngine.Random.Range(1, weightSum + 1);
+        SpawnConfig.Logger.LogInfo("Selecting a group based on random number " + randRoll + "...");
         foreach (EnemySetup enemy in possibleEnemies) {
 
             int weight = 1;
-            if (extendedSetups.ContainsKey(enemy.name)) weight = extendedSetups[enemy.name].GetWeight(currentDifficultyPick);
+            if (extendedSetups.ContainsKey(enemy.name)) weight = extendedSetups[enemy.name].GetWeight(currentDifficultyPick, __instance.enemyList);
             SpawnConfig.Logger.LogDebug("=> " + enemy.name + " = " + weight + " / " + randRoll);
 
             if (weight >= randRoll) {
                 SpawnConfig.Logger.LogInfo("Selected: " + enemy.name);
                 if(onlyOneSetup){
+                    // Replace with empty dummy setup if a thisGroupOnly setup has been selected already
                     item = ScriptableObject.CreateInstance<EnemySetup>();
                     item.name = enemy.name;
                     item.spawnObjects = [];

@@ -72,8 +72,6 @@ public class SpawnConfig : BaseUnityPlugin
         List<ExtendedEnemyExplained> explained = [new ExtendedEnemyExplained()];
         File.WriteAllText(explanationCfg, JsonConvert.SerializeObject(explained, Formatting.Indented));
 
-        // Read default EnemySetup configs
-        List<ExtendedEnemySetup> defaultSetupsList = JsonManager.GetEESListFromJSON(defaultSpawnGroupsCfg);
         // Read custom EnemySetup configs
         List<ExtendedEnemySetup> customSetupsList = JsonManager.GetEESListFromJSON(spawnGroupsCfg);
         // Read custom group counts config
@@ -92,10 +90,10 @@ public class SpawnConfig : BaseUnityPlugin
 
         // Save default ExtendedEnemySetups to file for comparison purposes on next launch
         List<ExtendedEnemySetup> extendedSetupsList = extendedSetups.Select(obj => obj.Value).ToList();
-        File.WriteAllText(defaultSpawnGroupsCfg, JsonConvert.SerializeObject(extendedSetupsList, Formatting.Indented));
+        File.WriteAllText(defaultSpawnGroupsCfg, JsonManager.EESToJSON(extendedSetupsList));
         if (customSetupsList.Count < 1) {
             Logger.LogInfo("No custom spawn groups config found! Creating default file");
-            File.WriteAllText(spawnGroupsCfg, JsonConvert.SerializeObject(extendedSetupsList, Formatting.Indented));
+            File.WriteAllText(spawnGroupsCfg, JsonManager.EESToJSON(extendedSetupsList));
             stopEarly = true;
         }
 
@@ -104,10 +102,12 @@ public class SpawnConfig : BaseUnityPlugin
 
         // Update custom setups with the default values from the source code where necessary
         foreach(ExtendedEnemySetup custom in customSetupsList){
+            custom.Update();
             if (extendedSetups.ContainsKey(custom.name)) {
-                custom.UpdateWithDefaults(defaultSetupsList.Where(objTemp => objTemp.name == custom.name).FirstOrDefault());
+                //custom.UpdateWithDefaults(extendedSetupsList.Where(objTemp => objTemp.name == custom.name).FirstOrDefault());
             }
         }
+        
 
         // Add missing enemies from source into the custom config
         Dictionary<string, ExtendedEnemySetup> tempDict = customSetupsList.ToDictionary(obj => obj.name);
@@ -120,7 +120,7 @@ public class SpawnConfig : BaseUnityPlugin
         customSetupsList = tempDict.Values.ToList();
 
         // Save custom setups with new updated default values to file
-        File.WriteAllText(spawnGroupsCfg, JsonConvert.SerializeObject(customSetupsList, Formatting.Indented));
+        File.WriteAllText(spawnGroupsCfg, JsonManager.EESToJSON(customSetupsList));
 
         // Replace vanilla extended setups with the custom ones so that the custom changes take effect ingame
         extendedSetups = customSetupsList.ToDictionary(obj => obj.name);

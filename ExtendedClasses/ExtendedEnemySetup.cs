@@ -1,7 +1,6 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
-using Newtonsoft.Json;
 using UnityEngine;
 using static SpawnConfig.ListManager;
 
@@ -13,11 +12,14 @@ public class ExtendedEnemySetup {
     public bool levelsCompletedCondition = false;
     public int levelsCompletedMax = 10;
     public int levelsCompletedMin = 0;
+    public bool levelRangeCondition = false;
+    public int minLevel = 0;
+    public int maxLevel = 0;
     public int runsPlayed = 0;
     public List<string> spawnObjects = [];
-    public int difficulty1Weight = 0;
-    public int difficulty2Weight = 0;
-    public int difficulty3Weight = 0;
+    public float difficulty1Weight = 0.0f;
+    public float difficulty2Weight = 0.0f;
+    public float difficulty3Weight = 0.0f;
     public bool thisGroupOnly = false;
     //public double manorWeightModifier = 1.0;
     //public double arcticWeightModifier = 1.0;
@@ -30,22 +32,31 @@ public class ExtendedEnemySetup {
     }
     public ExtendedEnemySetup (EnemySetup enemySetup, int difficulty) {
         name = enemySetup.name;
-        levelsCompletedCondition = enemySetup.levelsCompletedCondition;
-        levelsCompletedMax = enemySetup.levelsCompletedMax;
-        levelsCompletedMin = enemySetup.levelsCompletedMin;
+        if(enemySetup.levelsCompletedCondition){
+            levelRangeCondition = true;
+            minLevel = enemySetup.levelsCompletedMin + 1;
+            maxLevel = enemySetup.levelsCompletedMax + 1;
+        }
         runsPlayed = enemySetup.runsPlayed;
         spawnObjects = enemySetup.spawnObjects.Where(obj => !obj.name.Contains("Director")).Select(obj => obj.name).ToList();
-        difficulty1Weight = (difficulty == 1) ? 100 : 0;
-        difficulty2Weight = (difficulty == 2) ? 100 : 0;
-        difficulty3Weight = (difficulty == 3) ? 100 : 0;
+        float baseWeight = 100.0f;
+        if((bool)enemySetup.rarityPreset){
+            // Adjust weights of tier 3 multi-enemy groups to match the spawn rates of vanilla (margin of error of 0.01% per group)
+            if(enemySetup.rarityPreset.chance == 60) baseWeight = 1.5f;
+            SpawnConfig.Logger.LogDebug(name + " = " + enemySetup.rarityPreset.chance);
+        }
+        difficulty1Weight = (difficulty == 1) ? baseWeight : 0.0f;
+        difficulty2Weight = (difficulty == 2) ? baseWeight : 0.0f;
+        difficulty3Weight = (difficulty == 3) ? baseWeight : 0.0f;
     }
     public EnemySetup GetEnemySetup () {
         EnemySetup es = ScriptableObject.CreateInstance<EnemySetup>();
         es.name = name;
         es.spawnObjects = [];
-        es.levelsCompletedCondition = levelsCompletedCondition;
-        es.levelsCompletedMin = levelsCompletedMin;
-        es.levelsCompletedMax = levelsCompletedMax;
+        es.levelsCompletedCondition = levelRangeCondition;
+        // Number of levels completed is 1 lower than the level number the player is on
+        es.levelsCompletedMin = minLevel - 1;
+        es.levelsCompletedMax = maxLevel - 1;
         es.runsPlayed = runsPlayed;
 
         foreach (string objName in spawnObjects){
@@ -55,13 +66,13 @@ public class ExtendedEnemySetup {
         return es;
     }
 
-    public int GetWeight(int difficulty, List<EnemySetup> enemyList) {
+    public float GetWeight(int difficulty, List<EnemySetup> enemyList) {
 
-        int weight = difficulty1Weight;
+        float weight = difficulty1Weight;
         if(difficulty == 2) weight = difficulty2Weight;
         else if(difficulty == 3) weight = difficulty3Weight;
         if(enemyList.Select(obj => obj.name).ToList().Contains(name)) {
-            weight = (int)System.Math.Floor(weight * SpawnConfig.configManager.repeatMultiplier.Value);
+            weight = (float)(weight * SpawnConfig.configManager.repeatMultiplier.Value);
         }
         if(weight < 0) weight = 0;
         return weight;
@@ -82,5 +93,16 @@ public class ExtendedEnemySetup {
                 property.SetValue(this, newDefaultValue);
             }
         }
+    }
+
+    public void Update () {
+        // Migrate legacy values
+        if(this.levelsCompletedCondition) this.levelRangeCondition = true;
+        this.minLevel = this.levelsCompletedMin;
+        this.maxLevel = this.levelsCompletedMax;
+        if(!this.levelRangeCondition && this.maxLevel == 10) this.maxLevel = 0;
+
+        // Reset legacy values to prevent issues
+        this.levelsCompletedCondition = false;
     }
 }

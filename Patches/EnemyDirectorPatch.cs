@@ -4,6 +4,7 @@ using SpawnConfig.ExtendedClasses;
 using static SpawnConfig.ListManager;
 using UnityEngine;
 using System.Linq;
+using Unity.VisualScripting;
 
 namespace SpawnConfig.Patches;
 
@@ -14,6 +15,28 @@ public class EnemyDirectorPatch {
     public static bool setupDone = false;
     public static int currentDifficultyPick = 3;
     public static bool onlyOneSetup = false;
+
+    public static string PickEnemySimulation(List<EnemySetup> _enemiesList){
+		_enemiesList.Shuffle();
+		EnemySetup item = null;
+		float num2 = -1f;
+		foreach (EnemySetup _enemies in _enemiesList)
+		{
+			float num4 = 100f;
+			if ((bool)_enemies.rarityPreset)
+			{
+				num4 = _enemies.rarityPreset.chance;
+			}
+			float maxInclusive = Mathf.Max(0f, num4);
+			float num5 = Random.Range(0f, maxInclusive);
+			if (num5 > num2)
+			{
+				item = _enemies;
+				num2 = num5;
+			}
+		}
+        return item.name;
+    }
 
     [HarmonyPatch("Start")]
     [HarmonyPostfix]
@@ -26,6 +49,20 @@ public class EnemyDirectorPatch {
             // Go through existing EnemySetups & the contained spawnObjects and construct extended objects with default values
             int x = 3;
             foreach (List<EnemySetup> enemiesDifficulty in enemiesDifficulties){
+
+                // Simulate a million vanilla spawns per tier to determine spawn rates
+                /*
+                SpawnConfig.Logger.LogInfo("Difficulty X spawn distribution:");
+                Dictionary<string, int> enemyCounts = [];
+                for(int y = 0; y < 1000000; y++){
+                    string pickedEnemy = PickEnemySimulation(enemiesDifficulty);
+                    if(!enemyCounts.ContainsKey(pickedEnemy)){ enemyCounts.Add(pickedEnemy, 1); }
+                    else{ enemyCounts[pickedEnemy]++;}
+                }
+                foreach(KeyValuePair<string, int> kvp in enemyCounts){
+                    SpawnConfig.Logger.LogInfo(kvp.Key + " = " + kvp.Value);
+                }
+                */
 
                 foreach (EnemySetup enemySetup in enemiesDifficulty){
 
@@ -100,7 +137,6 @@ public class EnemyDirectorPatch {
             foreach (string sp in invalidGroups) {
                 extendedSetups.Remove(sp);
             }
-
             setupDone = true;
         }
     }
@@ -197,7 +233,7 @@ public class EnemyDirectorPatch {
         List<EnemySetup> possibleEnemies = [];
 
         // Filter the list before doing the selection because we need to only use the weights of EnemySetups that can actually spawn
-        int weightSum = 0;
+        float weightSum = 0.0f;
         foreach(EnemySetup enemy in _enemiesList){
             
             // Vanilla code
@@ -207,7 +243,7 @@ public class EnemyDirectorPatch {
 			}
 
             // Weight logic
-            int weight = 1;
+            float weight = 1.0f;
             if (extendedSetups.ContainsKey(enemy.name)) weight = extendedSetups[enemy.name].GetWeight(currentDifficultyPick, __instance.enemyList);
             if (weight < 1) continue;
             weightSum += weight;
@@ -218,11 +254,11 @@ public class EnemyDirectorPatch {
 
         // Pick EnemySetup
         EnemySetup item = null;
-        int randRoll = UnityEngine.Random.Range(1, weightSum + 1);
+        float randRoll = UnityEngine.Random.Range(1, weightSum + 1);
         SpawnConfig.Logger.LogInfo("Selecting a group based on random number " + randRoll + "...");
         foreach (EnemySetup enemy in possibleEnemies) {
 
-            int weight = 1;
+            float weight = 1.0f;
             if (extendedSetups.ContainsKey(enemy.name)) weight = extendedSetups[enemy.name].GetWeight(currentDifficultyPick, __instance.enemyList);
             SpawnConfig.Logger.LogDebug("=> " + enemy.name + " = " + weight + " / " + randRoll);
 

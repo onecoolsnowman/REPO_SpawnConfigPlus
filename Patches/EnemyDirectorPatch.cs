@@ -254,7 +254,7 @@ public class EnemyDirectorPatch {
 
         // Pick EnemySetup
         EnemySetup item = null;
-        float randRoll = UnityEngine.Random.Range(1, weightSum + 1);
+        float randRoll = UnityEngine.Random.Range(1.0f, weightSum);
         SpawnConfig.Logger.LogInfo("Selecting a group based on random number " + randRoll + "...");
         foreach (EnemySetup enemy in possibleEnemies) {
 

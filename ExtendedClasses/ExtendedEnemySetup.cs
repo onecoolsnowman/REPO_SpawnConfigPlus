@@ -97,12 +97,12 @@ public class ExtendedEnemySetup {
 
     public void Update () {
         // Migrate legacy values
-        if(this.levelsCompletedCondition) this.levelRangeCondition = true;
-        this.minLevel = this.levelsCompletedMin;
-        this.maxLevel = this.levelsCompletedMax;
+        if(this.levelsCompletedCondition) {
+            this.levelRangeCondition = true;
+            this.minLevel = this.levelsCompletedMin;
+            this.maxLevel = this.levelsCompletedMax;
+            this.levelsCompletedCondition = false;
+        }
         if(!this.levelRangeCondition && this.maxLevel == 10) this.maxLevel = 0;
-
-        // Reset legacy values to prevent issues
-        this.levelsCompletedCondition = false;
     }
 }

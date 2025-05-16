@@ -63,12 +63,23 @@ public class JsonManager {
                 writer.WriteValue(ees.difficulty3Weight);
                 writer.WritePropertyName("thisGroupOnly");
                 writer.WriteValue(ees.thisGroupOnly);
+                writer.WritePropertyName("oneAllowed");
+                writer.WriteValue(ees.oneAllowed);
                 writer.WritePropertyName("alterAmountChance");
                 writer.WriteValue(ees.alterAmountChance);
                 writer.WritePropertyName("alterAmountMin");
                 writer.WriteValue(ees.alterAmountMin);
                 writer.WritePropertyName("alterAmountMax");
                 writer.WriteValue(ees.alterAmountMax);
+                writer.WritePropertyName("levelListType");
+                writer.WriteValue(ees.levelListType);
+                writer.WritePropertyName("levelList");
+                writer.WriteStartArray();
+                foreach (string s in ees.levelList)
+                {
+                    writer.WriteValue(s);
+                }
+                writer.WriteEndArray();
                 writer.WriteEndObject();
             }
 

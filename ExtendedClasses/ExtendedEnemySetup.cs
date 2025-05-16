@@ -21,12 +21,15 @@ public class ExtendedEnemySetup {
     public float difficulty2Weight = 0.0f;
     public float difficulty3Weight = 0.0f;
     public bool thisGroupOnly = false;
+    public bool oneAllowed = false;
     //public double manorWeightModifier = 1.0;
     //public double arcticWeightModifier = 1.0;
     //public double wizardWeightModifier = 1.0;
     public double alterAmountChance = 0.0;
     public int alterAmountMin = 0;
     public int alterAmountMax = 0;
+    public int levelListType = 0;
+    public List<string> levelList = [];
     public ExtendedEnemySetup () {
 
     }
@@ -73,6 +76,7 @@ public class ExtendedEnemySetup {
         else if(difficulty == 3) weight = difficulty3Weight;
         if(enemyList.Select(obj => obj.name).ToList().Contains(name)) {
             weight = (float)(weight * SpawnConfig.configManager.repeatMultiplier.Value);
+            if (oneAllowed) weight = 0;
         }
         if(weight < 0) weight = 0;
         return weight;

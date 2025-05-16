@@ -5,6 +5,8 @@ using static SpawnConfig.ListManager;
 using UnityEngine;
 using System.Linq;
 using Unity.VisualScripting;
+using BepInEx.Logging;
+using Steamworks.ServerList;
 
 namespace SpawnConfig.Patches;
 
@@ -211,12 +213,14 @@ public class EnemyDirectorPatch {
         }
 
         // Fill up with empty objects if required to prevent errors
+        /*
         EnemySetup emptySetup = ScriptableObject.CreateInstance<EnemySetup>();
         emptySetup.name = "Fallback";
         emptySetup.spawnObjects = [];
         if(__instance.enemiesDifficulty1.Count < 1) __instance.enemiesDifficulty1.Add(emptySetup);
         if(__instance.enemiesDifficulty2.Count < 1) __instance.enemiesDifficulty2.Add(emptySetup);
         if(__instance.enemiesDifficulty3.Count < 1) __instance.enemiesDifficulty3.Add(emptySetup);
+        */
     }
 
 
@@ -239,8 +243,16 @@ public class EnemyDirectorPatch {
             // Vanilla code
             if ((enemy.levelsCompletedCondition && (RunManager.instance.levelsCompleted < enemy.levelsCompletedMin || RunManager.instance.levelsCompleted > enemy.levelsCompletedMax)) || num < enemy.runsPlayed)
 			{
-				continue;
+                SpawnConfig.Logger.LogInfo(enemy.name + " = Invalid (Level: " + (RunManager.instance.levelsCompleted + 1) + ", Run: " + num + ")");
+                continue;
 			}
+
+            // Current level check
+            if (extendedSetups.ContainsKey(enemy.name) && (extendedSetups[enemy.name].levelListType == 0 && extendedSetups[enemy.name].levelList.Contains(RunManager.instance.levelCurrent?.name) || extendedSetups[enemy.name].levelListType == 1 && !extendedSetups[enemy.name].levelList.Contains(RunManager.instance.levelCurrent?.name)))
+            {
+                SpawnConfig.Logger.LogInfo(enemy.name + " = Invalid (Map: " + RunManager.instance.levelCurrent?.name + ")");
+                continue;
+            }
 
             // Weight logic
             float weight = 1.0f;
@@ -252,6 +264,12 @@ public class EnemyDirectorPatch {
             SpawnConfig.Logger.LogInfo(enemy.name + " = " + weight);
         }
 
+        // Add an empty object if required to prevent errors
+        EnemySetup emptySetup = ScriptableObject.CreateInstance<EnemySetup>();
+        emptySetup.name = "Fallback";
+        emptySetup.spawnObjects = [];
+        if (possibleEnemies.Count < 1) possibleEnemies.Add(emptySetup);
+        
         // Pick EnemySetup
         EnemySetup item = null;
         float randRoll = UnityEngine.Random.Range(1.0f, weightSum);
@@ -263,13 +281,14 @@ public class EnemyDirectorPatch {
             SpawnConfig.Logger.LogDebug("=> " + enemy.name + " = " + weight + " / " + randRoll);
 
             if (weight >= randRoll) {
-                SpawnConfig.Logger.LogInfo("Selected: " + enemy.name);
                 if(onlyOneSetup){
                     // Replace with empty dummy setup if a thisGroupOnly setup has been selected already
+                    SpawnConfig.Logger.LogInfo("Lone group already selected");
                     item = ScriptableObject.CreateInstance<EnemySetup>();
                     item.name = enemy.name;
                     item.spawnObjects = [];
                 }else{
+                    SpawnConfig.Logger.LogInfo("Selected: " + enemy.name);
                     item = enemy;
                 }
                 break;

@@ -1,12 +1,54 @@
 {
   "Version": 1,
   "WorkspaceRootPath": "C:\\Users\\justi\\Documents\\GitHub\\REPO_SpawnConfigPlus\\",
-  "Documents": [],
+  "Documents": [
+    {
+      "AbsoluteMoniker": "D:0:0:{90652186-47B2-4585-BE8A-BF4B5C50227D}|SpawnConfigPlus.csproj|c:\\users\\justi\\documents\\github\\repo_spawnconfigplus\\extendedclasses\\extendedenemysetup.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{90652186-47B2-4585-BE8A-BF4B5C50227D}|SpawnConfigPlus.csproj|solutionrelative:extendedclasses\\extendedenemysetup.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{90652186-47B2-4585-BE8A-BF4B5C50227D}|SpawnConfigPlus.csproj|c:\\users\\justi\\documents\\github\\repo_spawnconfigplus\\patches\\enemydirectorpatch.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{90652186-47B2-4585-BE8A-BF4B5C50227D}|SpawnConfigPlus.csproj|solutionrelative:patches\\enemydirectorpatch.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    }
+  ],
   "DocumentGroupContainers": [
     {
       "Orientation": 0,
       "VerticalTabListWidth": 256,
-      "DocumentGroups": []
+      "DocumentGroups": [
+        {
+          "DockedWidth": 200,
+          "SelectedChildIndex": 1,
+          "Children": [
+            {
+              "$type": "Document",
+              "DocumentIndex": 1,
+              "Title": "EnemyDirectorPatch.cs",
+              "DocumentMoniker": "C:\\Users\\justi\\Documents\\GitHub\\REPO_SpawnConfigPlus\\Patches\\EnemyDirectorPatch.cs",
+              "RelativeDocumentMoniker": "Patches\\EnemyDirectorPatch.cs",
+              "ToolTip": "C:\\Users\\justi\\Documents\\GitHub\\REPO_SpawnConfigPlus\\Patches\\EnemyDirectorPatch.cs",
+              "RelativeToolTip": "Patches\\EnemyDirectorPatch.cs",
+              "ViewState": "AgIAAEcAAAAAAAAAAAAwwGYAAAANAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-05-18T16:43:56.328Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 0,
+              "Title": "ExtendedEnemySetup.cs",
+              "DocumentMoniker": "C:\\Users\\justi\\Documents\\GitHub\\REPO_SpawnConfigPlus\\ExtendedClasses\\ExtendedEnemySetup.cs",
+              "RelativeDocumentMoniker": "ExtendedClasses\\ExtendedEnemySetup.cs",
+              "ToolTip": "C:\\Users\\justi\\Documents\\GitHub\\REPO_SpawnConfigPlus\\ExtendedClasses\\ExtendedEnemySetup.cs",
+              "RelativeToolTip": "ExtendedClasses\\ExtendedEnemySetup.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAADQAAABCAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-05-18T16:56:25.367Z",
+              "EditorCaption": ""
+            }
+          ]
+        }
+      ]
     }
   ]
 }

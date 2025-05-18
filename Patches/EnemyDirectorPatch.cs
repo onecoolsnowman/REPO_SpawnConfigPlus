@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using HarmonyLib;
+using REPOLib.Modules;
 using SpawnConfig.ExtendedClasses;
 using static SpawnConfig.ListManager;
 using UnityEngine;
@@ -42,8 +43,17 @@ public class EnemyDirectorPatch {
 
     [HarmonyPatch("Start")]
     [HarmonyPostfix]
-    public static void SetupOnStart(EnemyDirector __instance){
+    public static void Test(EnemyDirector __instance){
+        REPOLib.BundleLoader.OnAllBundlesLoaded += () =>
+        {
+            SetupOnStart(__instance);
+        };
+    }
 
+    // Call the actual setup function after REPOLib finishes loading all bundles
+    // This is to fix the detection of some modded enemies
+    // Honestly I don't know what I'm doing I'm just praying it works
+    public static void SetupOnStart(EnemyDirector __instance){
         // Only do it once
         if (!setupDone) {
             List<EnemySetup>[] enemiesDifficulties = [__instance.enemiesDifficulty3, __instance.enemiesDifficulty2, __instance.enemiesDifficulty1];
@@ -51,21 +61,7 @@ public class EnemyDirectorPatch {
             // Go through existing EnemySetups & the contained spawnObjects and construct extended objects with default values
             int x = 3;
             foreach (List<EnemySetup> enemiesDifficulty in enemiesDifficulties){
-
-                // Simulate a million vanilla spawns per tier to determine spawn rates
-                /*
-                SpawnConfig.Logger.LogInfo("Difficulty X spawn distribution:");
-                Dictionary<string, int> enemyCounts = [];
-                for(int y = 0; y < 1000000; y++){
-                    string pickedEnemy = PickEnemySimulation(enemiesDifficulty);
-                    if(!enemyCounts.ContainsKey(pickedEnemy)){ enemyCounts.Add(pickedEnemy, 1); }
-                    else{ enemyCounts[pickedEnemy]++;}
-                }
-                foreach(KeyValuePair<string, int> kvp in enemyCounts){
-                    SpawnConfig.Logger.LogInfo(kvp.Key + " = " + kvp.Value);
-                }
-                */
-
+                
                 foreach (EnemySetup enemySetup in enemiesDifficulty){
 
                     // Make list of functional enemy spawnObjects
@@ -86,15 +82,28 @@ public class EnemyDirectorPatch {
                 }
                 x--;
             }
-            
+
             // Log default spawnObjects
+            SpawnConfig.Logger.LogInfo("");
+            SpawnConfig.Logger.LogInfo("---------------------------------------");
             SpawnConfig.Logger.LogInfo("Found the following enemy spawnObjects:");
+            SpawnConfig.Logger.LogInfo("---------------------------------------");
             foreach (KeyValuePair<string, GameObject> entry in spawnObjectsDict){
                 SpawnConfig.Logger.LogInfo(entry.Key);
             }
 
+            // Log default levels
+            SpawnConfig.Logger.LogInfo("");
+            SpawnConfig.Logger.LogInfo("---------------------------");
+            SpawnConfig.Logger.LogInfo("Found the following levels:");
+            SpawnConfig.Logger.LogInfo("---------------------------");
+            foreach (Level entry in Levels.AllLevels)
+            {
+                SpawnConfig.Logger.LogInfo(entry.name);
+            }
+
             // Get default enemy group counts per level
-            for(float y = 0.0f; y < 1.1f; y+=0.1f){
+            for (float y = 0.0f; y < 1.1f; y+=0.1f){
                 difficulty3Counts.Add((int)__instance.amountCurve3.Evaluate(y));
                 difficulty2Counts.Add((int)__instance.amountCurve2.Evaluate(y));
                 difficulty1Counts.Add((int)__instance.amountCurve1.Evaluate(y));

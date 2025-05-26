@@ -43,7 +43,7 @@ public class EnemyDirectorPatch {
 
     [HarmonyPatch("Start")]
     [HarmonyPostfix]
-    public static void Test(EnemyDirector __instance){
+    public static void SetupAfterBundles(EnemyDirector __instance){
         REPOLib.BundleLoader.OnAllBundlesLoaded += () =>
         {
             SetupOnStart(__instance);
@@ -89,7 +89,7 @@ public class EnemyDirectorPatch {
             SpawnConfig.Logger.LogInfo("Found the following enemy spawnObjects:");
             SpawnConfig.Logger.LogInfo("---------------------------------------");
             foreach (KeyValuePair<string, GameObject> entry in spawnObjectsDict){
-                SpawnConfig.Logger.LogInfo(entry.Key);
+                if (!entry.Key.Contains("Director")) SpawnConfig.Logger.LogInfo(entry.Key);
             }
 
             // Log default levels
